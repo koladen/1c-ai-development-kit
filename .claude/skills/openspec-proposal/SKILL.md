@@ -1,6 +1,9 @@
 ---
 name: openspec-proposal
-description: "Создать новое OpenSpec предложение изменения. Scaffold proposal.md, tasks.md, design.md и spec deltas."
+description: >
+  Этот скилл MUST быть вызван когда нужна формальная спецификация изменения: scaffold proposal.md, tasks.md, design.md и spec deltas.
+  SHOULD также вызывать для архитектурных или сквозных изменений, требующих формального отслеживания.
+  Do NOT использовать для быстрого обсуждения идей — используй brainstorm; для только декомпозиции задач — используй write-plan.
 argument-hint: <описание изменения>
 allowed-tools:
   - Bash

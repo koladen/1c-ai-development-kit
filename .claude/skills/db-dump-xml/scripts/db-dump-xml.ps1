@@ -100,12 +100,25 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 # --- Resolve V8Path ---
 if (-not $V8Path) {
-    $found = Get-ChildItem "C:\Program Files\1cv8\*\bin\1cv8.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
-    if ($found) {
-        $V8Path = $found.FullName
-    } else {
-        Write-Host "Error: 1cv8.exe not found. Specify -V8Path" -ForegroundColor Red
-        exit 1
+    # 1. Try .v8-project.json in current directory
+    $projectFile = Join-Path (Get-Location) ".v8-project.json"
+    if (Test-Path $projectFile) {
+        try {
+            $proj = Get-Content $projectFile -Raw | ConvertFrom-Json
+            if ($proj.v8path -and $proj.v8path -ne "") {
+                $V8Path = $proj.v8path
+            }
+        } catch {}
+    }
+    # 2. Fall back to latest installed version
+    if (-not $V8Path) {
+        $found = Get-ChildItem "C:\Program Files\1cv8\*\bin\1cv8.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($found) {
+            $V8Path = $found.FullName
+        } else {
+            Write-Host "Error: 1cv8.exe not found. Specify -V8Path" -ForegroundColor Red
+            exit 1
+        }
     }
 } elseif (Test-Path $V8Path -PathType Container) {
     $V8Path = Join-Path $V8Path "1cv8.exe"

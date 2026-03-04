@@ -1,4 +1,4 @@
-# 1c-project-init v1.0 — Initialize or enrich a 1C project from AI workspace
+﻿# 1c-project-init v1.0 - Initialize or enrich a 1C project from AI workspace
 param(
     [Parameter(Mandatory)]
     [string]$TargetPath,
@@ -64,7 +64,7 @@ Get-ChildItem -Path $SkillsSrc -Recurse -File | ForEach-Object {
     Copy-IfNewer -Src $_.FullName -Dst $dst -Label "skills/$rel"
 }
 
-# ── Docs (always overwrite — platform specs are source-of-truth) ─────────────
+# ── Docs (always overwrite - platform specs are source-of-truth) ─────────────
 
 Write-Host "Syncing docs..." -ForegroundColor Yellow
 $null = New-Item -ItemType Directory -Path $DocsDst -Force
@@ -87,7 +87,9 @@ if ($Mode -eq "new") {
         "openspec\changes",
         "openspec\specs",
         "openspec\archive",
-        "docs"
+        "docs",
+        "presentations",
+        "playwright-screenshots"
     )
     foreach ($d in $dirs) {
         $path = Join-Path $TargetPath $d
@@ -97,12 +99,52 @@ if ($Mode -eq "new") {
         }
     }
 
+    # playwright-screenshots/.gitkeep
+    $gitkeep = Join-Path $TargetPath "playwright-screenshots\.gitkeep"
+    if (-not (Test-Path $gitkeep)) {
+        $null = New-Item -ItemType File -Path $gitkeep -Force
+        $created += "playwright-screenshots/.gitkeep"
+    }
+
+    # .gitignore - add playwright screenshots entries
+    $gitignorePath = Join-Path $TargetPath ".gitignore"
+    $pwEntry = "playwright-screenshots/*.png"
+    if (Test-Path $gitignorePath) {
+        $content = Get-Content $gitignorePath -Raw -Encoding UTF8
+        if ($content -notlike "*playwright-screenshots*") {
+            Add-Content -Path $gitignorePath -Value "`n# Playwright screenshots (auto-generated)`nplaywright-screenshots/*.png`nplaywright-screenshots/*.jpg`nplaywright-screenshots/*.jpeg`n" -Encoding UTF8
+            $updated += ".gitignore (playwright-screenshots)"
+        }
+    } else {
+        "# Playwright screenshots (auto-generated)`nplaywright-screenshots/*.png`nplaywright-screenshots/*.jpg`nplaywright-screenshots/*.jpeg`n" | Set-Content -Path $gitignorePath -Encoding UTF8
+        $created += ".gitignore"
+    }
+
     # openspec/project.md placeholder
     $projectMd = Join-Path $TargetPath "openspec\project.md"
     if (-not (Test-Path $projectMd)) {
         "# Project Context`n`n<!-- AI: fill this with project goals, conventions, architecture -->`n" | Set-Content -Path $projectMd -Encoding UTF8
         $created += "openspec/project.md"
     }
+}
+
+# ── 1c-creds.json (central credentials file, created once per machine) ───────
+
+Write-Host "Checking 1c-creds.json..." -ForegroundColor Yellow
+$CredsFile = Join-Path $env:USERPROFILE ".claude\1c-creds.json"
+if (-not (Test-Path $CredsFile)) {
+    $null = New-Item -ItemType Directory -Path (Split-Path $CredsFile) -Force
+    @'
+{
+  "_note": "Credentials for mcp-1c-bridge.py. Keyed by base URL (without /hs/ai). Not committed anywhere.",
+  "http://YOUR_EDT_SERVER/KAF": {"user": "r.safiulin", "password": "FILL_ME"},
+  "default":                  {"user": "r.safiulin", "password": "FILL_ME"}
+}
+'@ | Set-Content -Path $CredsFile -Encoding UTF8
+    $created += "~/.claude/1c-creds.json (FILL IN PASSWORDS)"
+    Write-Host "  + Created ~/.claude/1c-creds.json - fill in passwords!" -ForegroundColor Yellow
+} else {
+    Write-Host "  ~/.claude/1c-creds.json already exists" -ForegroundColor Gray
 }
 
 # ── .claude/settings.json ────────────────────────────────────────────────────
@@ -126,8 +168,8 @@ if (-not (Test-Path $settingsPath)) {
 
 # ── Gitea remote setup ────────────────────────────────────────────────────────
 
-$GiteaUrl   = "http://YOUR_GITEA_SERVER:3000"
-$GiteaToken = "YOUR_GITEA_TOKEN"
+$GiteaUrl   = "http://YOUR_SERVER:3000"
+$GiteaToken = if ($env:GITEA_TOKEN) { $env:GITEA_TOKEN } else { (Get-Content "$env:USERPROFILE\.claude\private\credentials.md" -Raw) -match 'GITEA_TOKEN:\s*`([^`]+)`' | Out-Null; $Matches[1] }
 $ProjectName = Split-Path $TargetPath -Leaf
 
 Write-Host "Setting up Gitea remote..." -ForegroundColor Yellow
@@ -143,7 +185,7 @@ if (Test-Path (Join-Path $TargetPath ".git")) {
                 -Body $body -ErrorAction SilentlyContinue
         } catch {}
 
-        $remoteUrl = "http://admin:YOUR_GITEA_PASSWORD@YOUR_GITEA_SERVER:3000/admin/$ProjectName.git"
+        $remoteUrl = "http://admin:admin123@YOUR_SERVER:3000/admin/$ProjectName.git"
         & git -C $TargetPath remote add gitea $remoteUrl 2>$null
         $created += "git remote: gitea"
         Write-Host "  + Added gitea remote: $remoteUrl" -ForegroundColor Green
@@ -158,13 +200,82 @@ if (Test-Path (Join-Path $TargetPath ".git")) {
 
 Write-Host "Checking bsl-lsp-bridge..." -ForegroundColor Yellow
 $containerName = "mcp-lsp-$ProjectName"
-$containerRunning = ssh root@YOUR_GITEA_SERVER "docker ps -q --filter name=$containerName" 2>$null
+$containerRunning = ssh root@YOUR_SERVER "docker ps -q --filter name=$containerName" 2>$null
 if (-not $containerRunning) {
-    ssh root@YOUR_GITEA_SERVER "bash /opt/start-bsl-lsp.sh $ProjectName $ProjectName/src" 2>$null
+    ssh root@YOUR_SERVER "bash /opt/start-bsl-lsp.sh $ProjectName $ProjectName/src" 2>$null
     $created += "bsl-lsp-bridge: $containerName"
     Write-Host "  + Started container: $containerName" -ForegroundColor Green
 } else {
     Write-Host "  $containerName already running" -ForegroundColor Gray
+}
+
+# ── Extension: Load XML -> DB + Build CFE ─────────────────────────────────────
+
+$v8ProjectFile = Join-Path $TargetPath ".v8-project.json"
+if (Test-Path $v8ProjectFile) {
+    try {
+        $v8Proj = Get-Content $v8ProjectFile -Encoding UTF8 | ConvertFrom-Json
+
+        $v8Bin = if ($v8Proj.v8path) { $v8Proj.v8path } else {
+            $exe = Get-ChildItem "C:\Program Files\1cv8\*\bin\1cv8.exe" -ErrorAction SilentlyContinue |
+                   Sort-Object -Descending | Select-Object -First 1
+            if ($exe) { $exe.Directory.FullName } else { $null }
+        }
+
+        if ($v8Bin) {
+            $v8Exe = Join-Path $v8Bin "1cv8.exe"
+            $dbs   = if ($v8Proj.databases) { $v8Proj.databases } else { @() }
+
+            foreach ($db in $dbs) {
+                if (-not $db.extensionName -or -not $db.configSrc) { continue }
+
+                $extName   = $db.extensionName
+                $configSrc = $db.configSrc
+                $distDir   = Join-Path $TargetPath "dist"
+                $cfeFile   = Join-Path $distDir "$extName.cfe"
+
+                # Connection args
+                $connArgs = if ($db.server) { "/S`"$($db.server)/$($db.ref)`"" }
+                            elseif ($db.path) { "/F`"$($db.path)`"" }
+                            else { $null }
+                if (-not $connArgs) { continue }
+
+                $authArgs = ""
+                if ($db.user)     { $authArgs += " /N`"$($db.user)`"" }
+                if ($db.password) { $authArgs += " /P`"$($db.password)`"" }
+
+                $logFile = [System.IO.Path]::GetTempFileName()
+
+                Write-Host "  Loading XML -> $extName @ $($db.ref)..." -ForegroundColor Cyan
+                $loadArgs = "DESIGNER $connArgs$authArgs /LoadConfigFromFiles `"$configSrc`" -Format Hierarchical -Extension `"$extName`" /UpdateDBCfg /Out `"$logFile`" /DisableStartupDialogs"
+                $p = Start-Process -FilePath $v8Exe -ArgumentList $loadArgs -Wait -PassThru -NoNewWindow
+                if ($p.ExitCode -eq 0) {
+                    $script:created += "extension loaded: $extName"
+                    Write-Host "  OK Loaded and applied" -ForegroundColor Green
+
+                    $null = New-Item -ItemType Directory -Path $distDir -Force
+                    Write-Host "  Building CFE -> dist/$extName.cfe..." -ForegroundColor Cyan
+                    $dumpArgs = "DESIGNER $connArgs$authArgs /DumpCfg `"$cfeFile`" -Extension `"$extName`" /Out `"$logFile`" /DisableStartupDialogs"
+                    $p2 = Start-Process -FilePath $v8Exe -ArgumentList $dumpArgs -Wait -PassThru -NoNewWindow
+                    if ($p2.ExitCode -eq 0) {
+                        $script:created += "dist/$extName.cfe"
+                        Write-Host "  OK CFE saved: dist/$extName.cfe" -ForegroundColor Green
+                    } else {
+                        Write-Host "  FAIL CFE dump failed (exit $($p2.ExitCode))" -ForegroundColor Red
+                        if (Test-Path $logFile) { Get-Content $logFile -Encoding UTF8 | Select-Object -Last 5 }
+                    }
+                } else {
+                    Write-Host "  FAIL Load failed (exit $($p.ExitCode))" -ForegroundColor Red
+                    if (Test-Path $logFile) { Get-Content $logFile -Encoding UTF8 | Select-Object -Last 5 }
+                }
+                Remove-Item $logFile -Force -ErrorAction SilentlyContinue
+            }
+        } else {
+            Write-Host "  1cv8.exe not found, skipping extension deploy" -ForegroundColor Gray
+        }
+    } catch {
+        Write-Host "  Warning: .v8-project.json processing failed: $_" -ForegroundColor Yellow
+    }
 }
 
 # ── Summary ───────────────────────────────────────────────────────────────────

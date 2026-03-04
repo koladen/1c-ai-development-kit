@@ -1,6 +1,9 @@
 ---
 name: form-remove
-description: Удалить форму из объекта 1С (обработка, отчёт, справочник, документ и др.)
+description: >
+  Этот скилл MUST быть вызван когда пользователь просит удалить/убрать форму из объекта 1С.
+  SHOULD также вызывать при очистке неиспользуемых форм.
+  Do NOT использовать для удаления элементов формы — используй form-edit.
 argument-hint: <ObjectName> <FormName>
 disable-model-invocation: true
 allowed-tools:

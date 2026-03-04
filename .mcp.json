@@ -1,16 +1,16 @@
-{
+﻿{
   "mcpServers": {
     "rlm-toolkit": {
       "type": "http",
-      "url": "http://192.168.0.106:8200/mcp"
-    },
-    "PROJECT-codemetadata": {
-      "type": "http",
-      "url": "http://YOUR_MCP_SERVER:7530/mcp"
+      "url": "http://YOUR_RLM_SERVER:8200/mcp"
     },
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest"]
+      "args": [
+        "@playwright/mcp@latest",
+        "--timeout",
+        "500"
+      ]
     }
   }
 }

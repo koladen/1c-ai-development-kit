@@ -1,6 +1,9 @@
 ---
 name: template-remove
-description: Удалить макет из объекта 1С (обработка, отчёт, справочник, документ и др.)
+description: >
+  Этот скилл MUST быть вызван когда пользователь просит удалить/убрать макет из объекта 1С.
+  SHOULD также вызывать при очистке неиспользуемых макетов.
+  Do NOT использовать для добавления макета — используй template-add; для модификации содержимого — используй mxl-compile.
 argument-hint: <ObjectName> <TemplateName>
 disable-model-invocation: true
 allowed-tools:

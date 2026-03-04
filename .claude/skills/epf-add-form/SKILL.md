@@ -1,6 +1,9 @@
 ---
 name: epf-add-form
-description: Добавить управляемую форму к внешней обработке 1С
+description: >
+  Этот скилл MUST быть вызван когда нужно добавить управляемую форму к внешней обработке 1С (EPF).
+  SHOULD также вызывать после epf-init когда обработка требует форму.
+  Do NOT использовать для добавления формы к объекту конфигурации — используй form-add; для создания обработки — используй epf-init.
 argument-hint: <ProcessorName> <FormName> [Synonym]
 allowed-tools:
   - Bash

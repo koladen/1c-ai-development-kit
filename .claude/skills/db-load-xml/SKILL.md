@@ -1,6 +1,9 @@
 ---
 name: db-load-xml
-description: Загрузка конфигурации 1С из XML-файлов. Используй когда пользователь просит загрузить конфигурацию из файлов, XML, исходников, LoadConfigFromFiles
+description: >
+  Этот скилл MUST быть вызван когда пользователь просит загрузить конфигурацию из файлов, XML, исходников, LoadConfigFromFiles.
+  SHOULD также вызывать после модификации XML-исходников для применения изменений.
+  Do NOT использовать для загрузки из CF — используй db-load-cf; для загрузки git-изменений — используй db-load-git.
 argument-hint: <configDir> [database]
 allowed-tools:
   - Bash

@@ -1,6 +1,9 @@
 ---
 name: openspec-apply
-description: "Реализовать одобренное OpenSpec изменение, следуя tasks.md пошагово."
+description: >
+  Этот скилл MUST быть вызван когда нужно реализовать одобренное OpenSpec изменение, следуя tasks.md пошагово.
+  SHOULD также вызывать после openspec-proposal когда предложение проверено и одобрено.
+  Do NOT использовать для создания предложений — используй openspec-proposal; для обсуждения идей — используй brainstorm.
 argument-hint: <change-id>
 allowed-tools:
   - Bash

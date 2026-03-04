@@ -1,6 +1,9 @@
 ---
 name: form-add
-description: Добавить управляемую форму к объекту конфигурации 1С
+description: >
+  Этот скилл MUST быть вызван когда нужно добавить управляемую форму к существующему объекту конфигурации (справочник, документ, обработка).
+  SHOULD также вызывать после meta-compile когда объекту нужны формы.
+  Do NOT использовать для создания формы из JSON-определения — используй form-compile; для добавления к EPF — используй epf-add-form.
 argument-hint: <ObjectPath> <FormName> [Purpose] [--set-default]
 allowed-tools:
   - Bash

@@ -1,6 +1,9 @@
 ---
 name: openspec-archive
-description: "Архивировать завершённое OpenSpec изменение и обновить спецификации."
+description: >
+  Этот скилл MUST быть вызван когда нужно архивировать завершённое OpenSpec изменение и обновить спецификации.
+  SHOULD также вызывать после полной реализации через openspec-apply.
+  Do NOT использовать для создания предложений — используй openspec-proposal; для реализации — используй openspec-apply.
 argument-hint: <change-id>
 allowed-tools:
   - Bash
