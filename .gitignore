@@ -33,3 +33,6 @@ credentials.json
 # Build artifacts
 dist/
 build/
+
+# Session management (local state, not for VCS)
+session-notes.md

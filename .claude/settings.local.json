@@ -4,5 +4,13 @@
     "PROJECT-codemetadata",
     "playwright"
   ],
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "powershell.exe -NoProfile -File scripts/context-monitor.ps1",
+        "timeout": 5000
+      }
+    ]
+  }
 }
